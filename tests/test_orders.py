@@ -52,3 +52,16 @@ def test_cannot_cancel_after_a_ticket_is_scanned(client, alice_order):
     resp = client.post(f"/orders/{alice_order['id']}/cancel", headers=ALICE)
     assert resp.status_code == 409
     assert resp.get_json() == {"error": "order has checked-in tickets"}
+
+
+def test_cannot_cancel_after_a_ticket_is_transferred(client, alice_order, payments):
+    ticket_id = alice_order["ticket_ids"][0]
+    transfer = client.post(
+        f"/tickets/{ticket_id}/transfer", json={"to_email": "bob@example.com"}, headers=ALICE
+    )
+    assert transfer.status_code == 200
+
+    resp = client.post(f"/orders/{alice_order['id']}/cancel", headers=ALICE)
+    assert resp.status_code == 409
+    assert resp.get_json() == {"error": "order has transferred tickets"}
+    assert payments.refunds == []
